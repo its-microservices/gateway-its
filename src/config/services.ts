@@ -1,0 +1,1 @@
+export const USERS_SERVICE = 'MS_USER';
