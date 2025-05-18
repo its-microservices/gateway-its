@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Inject, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { catchError } from 'rxjs';
 import { PaginationDto } from 'src/common';
@@ -10,20 +10,17 @@ export class ProductsController {
     ) { }
 
     @Post()
-    createProduct() {
-        return 'Crear Producto';
+    createProduct(@Body() data) {
+        return this.productsClient.send('create_producto', data).pipe(
+            catchError((error) => {
+                throw new RpcException(error); // Lanza la excepción para que el cliente la maneje
+            })
+        );
     }
-
 
     @Get()
     findAllProducts(@Query() PaginationDto: PaginationDto)/* : Observable<any> */ {
         return this.productsClient.send('find_all_productos', PaginationDto);
-        // return this.appService.getUsers().pipe(
-        //   map((response: {data: []}) => {
-        //     // Podés procesar la respuesta si querés, o devolverla directo
-        //     return response.data; // o response.data si lo tenés estructurado así
-        //   })
-        // );
     }
 
     @Get(':id')
@@ -36,12 +33,20 @@ export class ProductsController {
     }
 
     @Delete(':id')
-    removeProducto(@Param('id') id: string) {
-        return `Eliminar usuario ${id}`;
+    removeProducto(@Param('id', ParseIntPipe) id: number) {
+        return this.productsClient.send('remove_producto', id).pipe(
+            catchError((error) => {
+                throw new RpcException(error); // Lanza la excepción para que el cliente la maneje
+            })
+        );
     }
 
     @Patch(':id')
-    patchProducto(@Param('id') id: string) {
-        return `Actualizar usuario ${id}`;
+    patchProducto(@Param('id', ParseIntPipe) id: number, @Body() updateProductoDto) {
+        return this.productsClient.send('update_producto', { id, updateProductoDto }).pipe(
+            catchError((error) => {
+                throw new RpcException(error); // Lanza la excepción para que el cliente la maneje
+            })
+        );
     }
 }
