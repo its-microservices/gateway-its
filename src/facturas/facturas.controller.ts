@@ -3,16 +3,16 @@ import { ClientProxy } from '@nestjs/microservices';
 
 @Controller('facturas')
 export class FacturasController {
-    constructor(@Inject('FACTURA_SERVICE') private client: ClientProxy) { }
+    constructor(@Inject('MS_FACTURAS') private readonly facturaClient: ClientProxy) { }
 
     @Post()
     crearFactura(@Body() data: any) {
-        return this.client.send('createFactura', data); // espera respuesta
+        return this.facturaClient.send('createFactura', data); // espera respuesta
     }
 
     @Get()
     obtenerFacturas() {
-        return this.client.send('findAllFactura', {});
+        return this.facturaClient.send('findAllFactura', {});
     }
 
 }

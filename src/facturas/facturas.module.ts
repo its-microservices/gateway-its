@@ -16,6 +16,6 @@ import { envs, FACTURA_SERVICE } from 'src/config';
         }
       }
     ]),
-  ]
+  ],
 })
 export class FacturasModule { }
