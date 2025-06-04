@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Inject, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Param, Patch, Post, Query } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { catchError } from 'rxjs';
 import { PaginationDto } from 'src/common';
@@ -10,8 +10,8 @@ export class UsersController {
   ) { }
 
   @Post()
-  createUser() {
-    return 'Crear usuario';
+  createUser(@Body() createUserDto) {
+    return this.userClient.send('create_user', createUserDto);
   }
 
 
