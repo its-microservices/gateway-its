@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Param, Patch, Post } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 
 @Controller('facturas')
@@ -7,7 +7,7 @@ export class FacturasController {
 
     @Post()
     crearFactura(@Body() data: any) {
-        return this.facturaClient.send('createFactura', data); // espera respuesta
+        return this.facturaClient.send('createFactura', data);
     }
 
     @Get()
@@ -15,4 +15,18 @@ export class FacturasController {
         return this.facturaClient.send('findAllFactura', {});
     }
 
+    @Get(':id')
+    obtenerFactura(@Param('id') id: string) {
+        return this.facturaClient.send('findOneFactura', id);
+    }
+
+    @Patch(':id')
+    actualizarFactura(@Param('id') id: string, @Body() data: any) {
+        return this.facturaClient.send('updateFactura', { id, data });
+    }
+
+    @Delete(':id')
+    eliminarFactura(@Param('id') id: string) {
+        return this.facturaClient.send('removeFactura', id);
+    }
 }
