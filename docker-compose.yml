@@ -1,0 +1,157 @@
+# Este archivo debe ir a la raíz del proyecto ITS-Microservice a la misma altura que el resto de directoris de Microservicios
+
+version: '3.9'
+
+services:
+  # MongoDB para facturas
+  mongo:
+    image: mongo
+    container_name: MongoDB
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - 27017:27017
+    volumes:
+      - ./data:/data/db
+      - ./config:/data/configdb
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}) }" | mongosh --port 27017 --quiet
+      interval: 5s
+      timeout: 30s
+      start_period: 0s
+      start_interval: 1s
+      retries: 30
+    networks:
+      - backend
+
+  mongo-init:
+    image: mongo
+    depends_on:
+    - mongo
+    entrypoint: >
+      bash -c "
+        sleep 5 &&
+        echo 'Initiating ReplicaSet...' &&
+        mongosh --host mongo:27017 --eval '
+          try {
+            rs.initiate({
+              _id: \"rs0\",
+              members: [{ _id: 0, host: \"mongo:27017\" }]
+            })
+          } catch(e) {
+            print(\"ReplicaSet already initialized\")
+          }
+        '
+      "
+    networks:
+      - backend
+
+  mysql:
+    image: mysql:8
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: its-microservice
+    ports:
+      - 3307:3306
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  app-users:
+    build: ./app-users
+    container_name: app-users
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3001
+      DB_PORT: 3306
+      DB_HOST: mysql
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      DB_DATABASE: its-microservice
+    networks:
+      - backend
+
+  # PostgreSQL para productos
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: its-microservice
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  app-productos:
+    build: ./app-productos
+    container_name: app-productos
+    depends_on:
+      - postgres
+    environment:
+      DB_URL: postgresql://postgres:root@postgres:5432/its-microservice
+      DB_PORT: 5432
+      DB_HOST: postgres
+      PORT: 3003
+      HOST: 0.0.0.0
+    networks:
+      - backend
+
+  app-facturas:
+    build: ./app-facturas
+    container_name: app-facturas
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      DB_URL: mongodb://mongo:27017/facturas_db?replicaSet=rs0
+      DB_PORT: 27017
+      DB_HOST: mongo
+      PORT: 3002
+      HOST: 0.0.0.0
+    networks:
+      - backend
+
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - 3000:3000
+    depends_on:
+      - app-users
+      - app-productos
+      - app-facturas
+    environment:
+      PORT: 3000
+      MS_USER_HOST: app-users
+      MS_USER_PORT: 3001
+      MS_PRODUCTS_HOST: app-productos
+      MS_PRODUCTS_PORT: 3003
+      MS_FACTURA_HOST: app-facturas
+      MS_FACTURA_PORT: 3002
+    networks:
+      - backend
+
+volumes:
+  data:
+  config:
+  mysql_data:
+  postgres_data:
+
+networks:
+  backend:
+    driver: bridge
